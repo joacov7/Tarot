@@ -41,15 +41,22 @@ export interface MesaSelection {
 interface MesaTarotProps {
   spread: SpreadDef;
   initialSeed: string;
-  /** Precio a mostrar en el resumen, si viene del catálogo (opcional en Fase 2). */
+  /** Plan elegido en el catálogo (opcional: sin plan no se puede pagar). */
+  planSlug?: string;
   planLabel?: string;
   planPrice?: string;
 }
 
-export function MesaTarot({ spread, initialSeed, planLabel, planPrice }: MesaTarotProps) {
+interface CheckoutState {
+  loading: boolean;
+  error: string | null;
+}
+
+export function MesaTarot({ spread, initialSeed, planSlug, planLabel, planPrice }: MesaTarotProps) {
   const [seed, setSeed] = useState(initialSeed);
   const [picks, setPicks] = useState<number[]>([]);
   const [summary, setSummary] = useState<MesaSelection | null>(null);
+  const [checkout, setCheckout] = useState<CheckoutState>({ loading: false, error: null });
 
   const shuffled = useMemo<ShuffledEntry[]>(() => {
     const order = shuffledIndices(TAROT_DECK.length, seed);
@@ -115,6 +122,43 @@ export function MesaTarot({ spread, initialSeed, planLabel, planPrice }: MesaTar
       /* almacenamiento no disponible: el resumen igual se muestra */
     }
     setSummary(selection);
+  }
+
+  async function startCheckout() {
+    if (!summary || !planSlug) return;
+    setCheckout({ loading: true, error: null });
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          servicePlanSlug: planSlug,
+          spreadSlug: summary.spreadSlug,
+          seed: summary.seed,
+          question: summary.question,
+          context: summary.context,
+          cards: summary.cards.map((c) => ({
+            code: c.code,
+            positionIndex: c.positionIndex,
+            orientation: c.orientation,
+          })),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        checkoutUrl?: string;
+        error?: string;
+      };
+      if (res.ok && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      setCheckout({
+        loading: false,
+        error: data.error ?? 'No se pudo iniciar el pago. Intentá de nuevo.',
+      });
+    } catch {
+      setCheckout({ loading: false, error: 'Error de red. Intentá de nuevo.' });
+    }
   }
 
   return (
@@ -290,13 +334,27 @@ export function MesaTarot({ spread, initialSeed, planLabel, planPrice }: MesaTar
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button disabled title="Disponible en la etapa de pagos">
-              Continuar al pago (próximamente)
-            </Button>
+            {planSlug ? (
+              <Button onClick={startCheckout} disabled={checkout.loading}>
+                {checkout.loading ? 'Redirigiendo…' : `Continuar al pago${planPrice ? ` · ${planPrice}` : ''}`}
+              </Button>
+            ) : (
+              <a
+                href="/servicios"
+                className="inline-flex items-center justify-center rounded-lg bg-mystic-gold px-5 py-2.5 text-sm font-medium text-mystic-bg transition hover:opacity-90"
+              >
+                Elegir un servicio para pagar
+              </a>
+            )}
             <Button variant="secondary" onClick={reshuffle}>
               Empezar de nuevo
             </Button>
           </div>
+          {checkout.error && (
+            <p className="mt-2 text-xs text-red-400" role="alert">
+              {checkout.error}
+            </p>
+          )}
           <p className="mt-3 text-[11px] leading-relaxed text-mystic-muted/70">
             Esta es una experiencia recreativa y de reflexión. No garantiza predicciones ni
             resultados y no constituye asesoramiento médico, legal ni financiero.

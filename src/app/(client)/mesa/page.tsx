@@ -43,6 +43,7 @@ export default async function MesaPage({ searchParams }: MesaPageProps) {
         key={spread.slug}
         spread={spread}
         initialSeed={seed}
+        planSlug={plan?.slug}
         planLabel={plan?.name}
         planPrice={plan ? formatPrice(plan.price, plan.currency) : undefined}
       />

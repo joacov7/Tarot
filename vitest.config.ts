@@ -7,6 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      // `server-only` lanza fuera de un RSC; en tests lo neutralizamos.
+      'server-only': resolve(__dirname, './tests/stubs/empty.ts'),
     },
   },
   test: {
