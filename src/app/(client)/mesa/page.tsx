@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { MesaTarot } from '@/components/tarot/MesaTarot';
 import { SPREADS, getSpread, DEFAULT_SPREAD_SLUG } from '@/lib/tarot/spreads';
 import { generateSeed } from '@/lib/tarot/shuffle';
+import { getServicePlan } from '@/server/repositories/catalog';
+import { formatPrice } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 
 export const dynamic = 'force-dynamic'; // seed nueva por visita
@@ -10,9 +12,10 @@ interface MesaPageProps {
   searchParams: { tirada?: string; plan?: string };
 }
 
-export default function MesaPage({ searchParams }: MesaPageProps) {
+export default async function MesaPage({ searchParams }: MesaPageProps) {
   const spread = getSpread(searchParams.tirada ?? '') ?? getSpread(DEFAULT_SPREAD_SLUG)!;
   const seed = generateSeed();
+  const plan = searchParams.plan ? await getServicePlan(searchParams.plan) : undefined;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
@@ -36,7 +39,13 @@ export default function MesaPage({ searchParams }: MesaPageProps) {
       </nav>
 
       {/* key = spread.slug para reiniciar el estado al cambiar de tirada */}
-      <MesaTarot key={spread.slug} spread={spread} initialSeed={seed} />
+      <MesaTarot
+        key={spread.slug}
+        spread={spread}
+        initialSeed={seed}
+        planLabel={plan?.name}
+        planPrice={plan ? formatPrice(plan.price, plan.currency) : undefined}
+      />
     </main>
   );
 }
