@@ -39,4 +39,11 @@ describe('buildUserPrompt', () => {
     const p = buildUserPrompt({ ...input, context: undefined });
     expect(p).not.toContain('Contexto adicional');
   });
+
+  it('lectura con péndulo (0 cartas): usa el encuadre de péndulo, sin cartas', () => {
+    const p = buildUserPrompt({ ...input, cards: [], spreadName: 'Mesa Cuántica Infinity' });
+    expect(p).toContain('lectura con péndulo');
+    expect(p).not.toContain('Cartas seleccionadas');
+    expect(p).toContain('BORRADOR');
+  });
 });

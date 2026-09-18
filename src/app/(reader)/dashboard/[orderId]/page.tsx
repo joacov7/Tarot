@@ -52,16 +52,22 @@ export default async function ReadingDetailPage({ params }: DetailPageProps) {
 
           <div className="rounded-xl border border-mystic-border bg-mystic-surface p-4">
             <p className="mb-2 text-xs uppercase tracking-wide text-mystic-amethyst">Cartas</p>
-            <ul className="space-y-1 text-sm">
-              {cards.map((c, i) => (
-                <li key={i} className="text-mystic-text">
-                  <span className="text-mystic-muted">{c.positionLabel}:</span> {c.name}
-                  {c.orientation === 'reversed' && (
-                    <span className="text-mystic-muted"> (invertida)</span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            {cards.length === 0 ? (
+              <p className="text-sm text-mystic-muted">
+                Lectura con péndulo (sin selección de cartas).
+              </p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {cards.map((c, i) => (
+                  <li key={i} className="text-mystic-text">
+                    <span className="text-mystic-muted">{c.positionLabel}:</span> {c.name}
+                    {c.orientation === 'reversed' && (
+                      <span className="text-mystic-muted"> (invertida)</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="rounded-xl border border-mystic-border bg-mystic-surface p-4">

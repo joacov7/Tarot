@@ -11,10 +11,12 @@ insert into public.roles (name, description) values
   ('admin',  'Administrador de la plataforma')
 on conflict (name) do nothing;
 
--- Tiradas del MVP
-insert into public.tarot_spreads (slug, name, description, card_count, allows_reversed) values
-  ('one-card',   'Una carta',   'Un mensaje breve y directo para el día o una pregunta puntual.', 1, true),
-  ('three-card', 'Tres cartas', 'Pasado, presente y futuro (o situación, obstáculo y consejo).', 3, true)
+-- Tiradas del MVP (con cartas) + lecturas con péndulo (sin cartas)
+insert into public.tarot_spreads (slug, name, description, card_count, allows_reversed, uses_pendulum) values
+  ('one-card',   'Una carta',   'Un mensaje breve y directo para el día o una pregunta puntual.', 1, true, false),
+  ('three-card', 'Tres cartas', 'Pasado, presente y futuro (o situación, obstáculo y consejo).', 3, true, false),
+  ('mesa-cuantica-infinity', 'Mesa Cuántica Infinity', 'Lectura con péndulo sobre la mesa cuántica infinity: explora tus energías, bloqueos y caminos posibles. La realiza la tarotista, sin selección de cartas.', 0, false, true),
+  ('lovers', 'Lovers · Péndulo del amor', 'Lectura con péndulo enfocada en el amor y los vínculos: conexión, obstáculos y consejo para tu vida afectiva. La realiza la tarotista, sin selección de cartas.', 0, false, true)
 on conflict (slug) do nothing;
 
 -- Posiciones de "una carta"

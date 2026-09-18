@@ -13,6 +13,7 @@ export const checkoutSchema = z.object({
   question: z.string().trim().min(5).max(500),
   context: z.string().trim().max(2000).optional(),
   deliveryChannel: z.enum(['email', 'in_app']).default('email'),
+  // Vacío en lecturas con péndulo (sin selección de cartas).
   cards: z
     .array(
       z.object({
@@ -21,7 +22,6 @@ export const checkoutSchema = z.object({
         orientation: z.enum(ORIENTATIONS),
       }),
     )
-    .min(1)
     .max(15),
 });
 

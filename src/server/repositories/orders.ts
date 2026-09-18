@@ -83,16 +83,19 @@ export async function createOrderWithReading(params: CreateOrderParams): Promise
     .single();
   if (readErr || !reading) throw new Error(`No se pudo crear la lectura: ${readErr?.message}`);
 
-  const cardRows = params.reading.cards.map((c) => ({
-    reading_id: reading.id,
-    card_id: c.cardId,
-    position_id: c.positionId,
-    position_index: c.positionIndex,
-    orientation: c.orientation,
-    drawn_seed: params.reading.seed,
-  }));
-  const { error: cardsErr } = await supabase.from('reading_cards').insert(cardRows);
-  if (cardsErr) throw new Error(`No se pudieron guardar las cartas: ${cardsErr.message}`);
+  // En lecturas con péndulo no hay cartas seleccionadas.
+  if (params.reading.cards.length > 0) {
+    const cardRows = params.reading.cards.map((c) => ({
+      reading_id: reading.id,
+      card_id: c.cardId,
+      position_id: c.positionId,
+      position_index: c.positionIndex,
+      orientation: c.orientation,
+      drawn_seed: params.reading.seed,
+    }));
+    const { error: cardsErr } = await supabase.from('reading_cards').insert(cardRows);
+    if (cardsErr) throw new Error(`No se pudieron guardar las cartas: ${cardsErr.message}`);
+  }
 
   await supabase.from('audit_logs').insert({
     actor_id: params.userId,

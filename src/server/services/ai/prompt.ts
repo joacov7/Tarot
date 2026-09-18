@@ -23,13 +23,30 @@ export function buildUserPrompt(input: GenerateReadingInput): string {
     parts.push(`Contexto adicional: ${input.context.trim()}`);
   }
   parts.push('');
-  parts.push('Cartas seleccionadas (en orden de posición):');
-  parts.push(formatCardsBlock(input.cards));
+
+  const isPendulum = input.cards.length === 0;
+  if (isPendulum) {
+    // Lectura con péndulo: no hay cartas. La IA prepara un borrador reflexivo de
+    // apoyo; la lectura definitiva la realiza la tarotista con el péndulo.
+    parts.push(
+      'Esta es una lectura con péndulo (sin cartas). Redactá un borrador cálido y reflexivo ' +
+        'que acompañe la consulta: explorá posibles energías, preguntas para la reflexión y ' +
+        'un mensaje de contención, dejando espacio para que la tarotista complete la lectura ' +
+        'con el péndulo. No inventes resultados del péndulo ni afirmes respuestas cerradas.',
+    );
+  } else {
+    parts.push('Cartas seleccionadas (en orden de posición):');
+    parts.push(formatCardsBlock(input.cards));
+    parts.push('');
+    parts.push(
+      'Redactá una lectura cálida y reflexiva que integre la pregunta y el contexto, ' +
+        'manteniendo continuidad entre las cartas y respetando su orientación.',
+    );
+  }
+
   parts.push('');
   parts.push(
-    'Redactá una lectura cálida y reflexiva que integre la pregunta y el contexto, ' +
-      'manteniendo continuidad entre las cartas y respetando su orientación. ' +
-      'Recordá el encuadre: experiencia recreativa y de reflexión, sin garantías ni ' +
+    'Recordá el encuadre: experiencia recreativa y de reflexión, sin garantías ni ' +
       'afirmaciones categóricas. Este es un BORRADOR para revisión humana.',
   );
   return parts.join('\n');

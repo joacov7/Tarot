@@ -122,4 +122,26 @@ describe('createReadingOrder', () => {
     getCardIdsByCodes.mockResolvedValue(new Map([['major-00', 'id-a']]));
     await expect(createReadingOrder('user-1', validInput)).rejects.toThrow(/desconocida/);
   });
+
+  it('permite una lectura con péndulo (0 cartas)', async () => {
+    getSpreadRecordBySlug.mockResolvedValue({
+      id: 'spread-p',
+      cardCount: 0,
+      allowsReversed: false,
+      positions: [],
+    });
+    getCardIdsByCodes.mockResolvedValue(new Map());
+    const pendulumInput = {
+      servicePlanSlug: 'premium',
+      spreadSlug: 'mesa-cuantica-infinity',
+      seed: 'seed-1',
+      question: '¿Qué energía predomina?',
+      deliveryChannel: 'email' as const,
+      cards: [],
+    };
+    const res = await createReadingOrder('user-1', pendulumInput);
+    expect(res.amountTotal).toBe(7900);
+    const arg = createOrderWithReading.mock.calls[0]![0] as { reading: { cards: unknown[] } };
+    expect(arg.reading.cards).toHaveLength(0);
+  });
 });

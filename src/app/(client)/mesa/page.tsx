@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MesaTarot } from '@/components/tarot/MesaTarot';
+import { PenduloReading } from '@/components/tarot/PenduloReading';
 import { SPREADS, getSpread, DEFAULT_SPREAD_SLUG } from '@/lib/tarot/spreads';
 import { generateSeed } from '@/lib/tarot/shuffle';
 import { getServicePlan } from '@/server/repositories/catalog';
@@ -33,20 +34,30 @@ export default async function MesaPage({ searchParams }: MesaPageProps) {
                 : 'border-mystic-border text-mystic-muted hover:text-mystic-text',
             )}
           >
-            {s.name} · {s.cardCount}
+            {s.usesPendulum ? s.name : `${s.name} · ${s.cardCount}`}
           </Link>
         ))}
       </nav>
 
       {/* key = spread.slug para reiniciar el estado al cambiar de tirada */}
-      <MesaTarot
-        key={spread.slug}
-        spread={spread}
-        initialSeed={seed}
-        planSlug={plan?.slug}
-        planLabel={plan?.name}
-        planPrice={plan ? formatPrice(plan.price, plan.currency) : undefined}
-      />
+      {spread.usesPendulum ? (
+        <PenduloReading
+          key={spread.slug}
+          spread={spread}
+          planSlug={plan?.slug}
+          planLabel={plan?.name}
+          planPrice={plan ? formatPrice(plan.price, plan.currency) : undefined}
+        />
+      ) : (
+        <MesaTarot
+          key={spread.slug}
+          spread={spread}
+          initialSeed={seed}
+          planSlug={plan?.slug}
+          planLabel={plan?.name}
+          planPrice={plan ? formatPrice(plan.price, plan.currency) : undefined}
+        />
+      )}
     </main>
   );
 }
