@@ -55,15 +55,20 @@ regeneración, y elegir modelo por modalidad (Express puede usar un modelo más 
 
 ---
 
-## 4. Decisiones pendientes (requieren tu definición)
+## 4. Decisiones — definidas
 
-1. **Host del worker/Redis**: ¿BullMQ+Redis (Railway/Upstash) o servicio gestionado (Inngest/QStash)?
-2. **Proveedor de IA por defecto**: ¿OpenAI o Gemini? ¿Modelo distinto para Express vs. Premium?
-3. **Email**: ¿Resend o SMTP propio?
-4. **Precios y plazos** concretos de Premium y Express (montos, moneda, tiempos de entrega).
-5. **Tiradas iniciales** a soportar en el MVP (¿one-card, three-card, celtic-cross?).
-6. **Alcance de audio** en Express (¿incluido, opcional pago, o no disponible?).
-7. **Idiomas**: ¿solo `es-AR` en el MVP?
+| # | Decisión | Elección |
+|---|----------|----------|
+| 1 | Worker / colas | **Inngest** (gestionado, sin infra propia) tras interfaz `server/queue` |
+| 2 | Proveedor de IA | **OpenAI** — `gpt-4o-mini` (Express) / `gpt-4o` (Premium) |
+| 3 | Email | **Resend** |
+| 4 | Precios y plazos | **Configurables** en `service_plans` (panel admin); orden congela el monto |
+| 5 | Tiradas del MVP | `one-card` + `three-card` (celtic-cross más adelante) |
+| 6 | Audio | Solo **Premium** (en Express, add-on opcional futuro) |
+| 7 | Idiomas | Solo **es-AR** en el MVP |
+
+> Los **montos y plazos exactos** ya no bloquean el desarrollo: se cargan valores de ejemplo en
+> `service_plans` y el admin los edita desde el panel sin desplegar código.
 
 ---
 

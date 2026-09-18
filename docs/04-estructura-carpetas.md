@@ -40,12 +40,12 @@ tarot/
 │  │  ├─ repositories/            # acceso a datos (Supabase/pg)
 │  │  ├─ auth/                    # sesión, guards por rol
 │  │  ├─ permissions/             # RBAC helpers
-│  │  └─ queue/                   # BullMQ: colas + productores
-│  ├─ workers/                    # proceso worker (consumidores de cola)
-│  │  ├─ index.ts
-│  │  ├─ ai-generate.worker.ts
-│  │  ├─ deliver-reading.worker.ts
-│  │  └─ send-notification.worker.ts
+│  │  └─ queue/                   # interfaz de cola + productores (Inngest)
+│  ├─ inngest/                    # funciones asíncronas (consumidores)
+│  │  ├─ client.ts
+│  │  ├─ ai-generate.ts
+│  │  ├─ deliver-reading.ts
+│  │  └─ send-notification.ts
 │  ├─ lib/                        # clientes (supabase, redis), utils
 │  ├─ schemas/                    # validaciones Zod (compartidas)
 │  ├─ types/                      # tipos compartidos (DB, dominio, API)
@@ -75,7 +75,7 @@ permisos**. Nada de SQL en componentes ni lógica de negocio en rutas API.
 - `zod` (validación), `@supabase/supabase-js`, `@supabase/ssr`
 
 **Datos / colas**
-- `bullmq`, `ioredis`
+- `inngest` (jobs asíncronos gestionados; alternativa preparada: `bullmq` + `ioredis`)
 - (opción) `drizzle-orm` o `postgres` para repositorios tipados — ver `docs/05`
 
 **Integraciones**
@@ -106,8 +106,10 @@ SUPABASE_SERVICE_ROLE_KEY=            # solo servidor/worker
 # Base de datos (si se usa cliente pg/drizzle directo)
 DATABASE_URL=
 
-# Redis / colas
-REDIS_URL=
+# Colas asíncronas (Inngest)
+INNGEST_EVENT_KEY=
+INNGEST_SIGNING_KEY=
+# Alternativa BullMQ (si se migra): REDIS_URL=
 
 # Pagos
 MP_ACCESS_TOKEN=
@@ -115,10 +117,11 @@ MP_WEBHOOK_SECRET=
 STRIPE_SECRET_KEY=                    # futuro
 STRIPE_WEBHOOK_SECRET=                # futuro
 
-# IA
-AI_PROVIDER=openai                    # openai | gemini
+# IA (OpenAI por defecto)
+AI_PROVIDER=openai                    # openai (Gemini preparado por abstracción)
 OPENAI_API_KEY=
-GEMINI_API_KEY=
+AI_MODEL_EXPRESS=gpt-4o-mini
+AI_MODEL_PREMIUM=gpt-4o
 
 # Email
 RESEND_API_KEY=

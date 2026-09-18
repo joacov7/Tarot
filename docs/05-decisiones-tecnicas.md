@@ -20,8 +20,10 @@ técnica y comercial**.
   - (a) **BullMQ + Redis** con worker Node dedicado.
   - (b) Colas sobre Postgres (tabla + `pg_cron`/polling).
   - (c) Servicio gestionado tipo **Inngest/QStash** (HTTP + reintentos, sin infra propia).
-- **Recomendación**: **(a) BullMQ + Redis** como diseño principal, con **(c) como alternativa
-  válida** si no se quiere operar un worker/Redis.
+- **Decisión (MVP)**: **(c) Inngest** — cubre *delayed jobs* (retraso Premium/Express),
+  reintentos con backoff e idempotencia **sin operar worker/Redis propios**, integrado a Vercel.
+  Se mantiene detrás de la interfaz `server/queue` para poder migrar a **(a) BullMQ+Redis** si el
+  volumen lo exige, sin tocar el dominio.
 - **Justificación**: BullMQ ofrece prioridades (Express > Premium), *delayed jobs* (retraso
   configurable), reintentos con backoff e idempotencia, todo estándar. Requiere un host para el
   worker (Railway/Render/Fly) y Redis gestionado (Upstash). Si se prefiere cero-ops, Inngest/QStash
@@ -39,11 +41,22 @@ técnica y comercial**.
   tipado/control fino para la lógica crítica del servidor. Drizzle da migraciones y tipos sin el
   peso de un ORM completo. Se mantiene todo el SQL detrás de la capa de repositorios.
 
-## D4. Proveedor de IA: OpenAI vs. Gemini (capa de abstracción)
-- **Recomendación**: **interfaz `AiProvider` común** (`generateReading(input): Draft`) con
-  implementaciones intercambiables; proveedor por defecto configurable por env.
-- **Justificación**: evita *lock-in*, permite comparar costo/calidad y hacer *failover*. Cada
-  generación registra `model` y `prompt_version_id` (trazabilidad y reproducibilidad).
+## D4. Proveedor de IA: **OpenAI** (con capa de abstracción)
+- **Decisión**: proveedor por defecto **OpenAI**, detrás de una **interfaz `AiProvider` común**
+  (`generateReading(input): Draft`) que permite añadir Gemini u otro más adelante.
+- **Modelos por modalidad**: `gpt-4o-mini` para **Express** (borrador rápido y económico que
+  igual revisa un humano) y `gpt-4o` para **Premium** (más matiz). Configurable por env/DB.
+- **Justificación**: se elige OpenAI por preferencia del proyecto; la abstracción evita *lock-in*
+  y mantiene la opción de *failover*. Cada generación registra `model` y `prompt_version_id`
+  (trazabilidad y reproducibilidad), y la elección de modelo es la principal palanca de costo.
+
+## D4b. Precios: **configurables** (no hardcodeados)
+- **Decisión**: los precios y plazos viven en la base de datos (tabla `service_plans`) y se
+  editan desde el **panel admin**, no en el código. La orden **congela** el precio vigente al
+  momento de la compra en `orders.amount_total` (auditoría de lo que pagó el cliente).
+- **Justificación**: permite cambiar precios/plazos, hacer promociones y operar en varias monedas
+  sin desplegar código; congelar el monto en la orden protege el histórico ante cambios futuros.
+  Ver tabla `service_plans` en `docs/03-esquema-base-datos.md`.
 
 ## D5. Pagos: Mercado Pago primero, Stripe por adapter
 - **Recomendación**: interfaz `PaymentProvider` (`createPreference`, `verifyWebhook`,
@@ -87,7 +100,8 @@ técnica y comercial**.
 | Arquitectura | Monolito modular + worker | Extraer servicios |
 | Colas | BullMQ + Redis | Inngest/QStash (interfaz) |
 | Datos | Supabase SDK (RLS) + Drizzle/SQL (server) | SQL crudo |
-| IA | Abstracción OpenAI/Gemini | Cambio por env |
+| IA | **OpenAI** (gpt-4o-mini/gpt-4o) tras abstracción | Gemini u otro por env |
+| Precios | **Configurables** en DB (`service_plans`) + panel admin | Congelados por orden |
 | Pagos | Mercado Pago (adapter) | Stripe (adapter) |
 | Auth | Supabase Auth + RLS | — |
 | Notificaciones | Email + in-app | WhatsApp |

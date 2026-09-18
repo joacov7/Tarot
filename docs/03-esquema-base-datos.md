@@ -14,6 +14,7 @@ erDiagram
     profiles }o--|| roles : "role_id"
     users ||--o{ orders : "cliente"
     users ||--o{ tarot_readings : "cliente"
+    service_plans ||--o{ orders : "plan comprado"
     orders ||--|| tarot_readings : "1:1"
     orders ||--o{ order_items : ""
     orders ||--o{ payments : ""
@@ -87,6 +88,29 @@ Gestionada por **Supabase Auth** (`auth.users`). No se recrea; se referencia su 
 | created_at / updated_at | timestamptz | |
 
 CHECK: `arcana in ('major','minor')`. Índice: `idx_tarot_cards_arcana_suit`.
+
+#### `service_plans` — servicios y **precios configurables** (gestionado por admin)
+| Columna | Tipo | Notas |
+|---------|------|-------|
+| id | uuid PK | |
+| slug | text UNIQUE NOT NULL | `premium` \| `express` (u otros futuros) |
+| name | text NOT NULL | nombre comercial |
+| description | text | |
+| modality | text NOT NULL | `premium` \| `express` (CHECK) |
+| price | numeric(12,2) NOT NULL | **precio editable desde el panel admin** |
+| currency | text NOT NULL default 'ARS' | ISO 4217 |
+| delivery_delay_seconds | integer NOT NULL default 0 | plazo/retraso configurable |
+| priority | smallint NOT NULL default 0 | Express > Premium en cola |
+| includes_audio | boolean default false | audio incluido (true en Premium) |
+| ai_model | text | modelo de IA para esta modalidad (ej. `gpt-4o-mini`) |
+| is_active | boolean default true | visible en catálogo |
+| created_by | uuid FK → auth.users.id | admin |
+| created_at / updated_at | timestamptz | auditoría |
+
+CHECK: `modality in ('premium','express')`, `price >= 0`. Índice: `idx_service_plans_active`.
+
+> El precio y el plazo **no** están en el código: se editan aquí. La orden **congela** el precio
+> vigente en `orders.amount_total` al comprar, para no alterar el histórico ante cambios futuros.
 
 #### `tarot_spreads` — tipos de tirada
 | Columna | Tipo | Notas |
@@ -166,10 +190,11 @@ UNIQUE `(reading_id, card_id)` — no repetir la misma carta en una tirada.
 |---------|------|-------|
 | id | uuid PK | |
 | user_id | uuid FK → auth.users.id NOT NULL | |
+| service_plan_id | uuid FK → service_plans.id NOT NULL | plan comprado |
 | status | text NOT NULL default 'PENDING_PAYMENT' | máquina de estados |
-| modality | text NOT NULL | `premium` \| `express` |
+| modality | text NOT NULL | `premium` \| `express` (copiado del plan) |
 | currency | text NOT NULL default 'ARS' | ISO 4217 |
-| amount_total | numeric(12,2) NOT NULL | precio congelado en compra |
+| amount_total | numeric(12,2) NOT NULL | **precio congelado** del plan al comprar |
 | delivery_channel | text NOT NULL | `email` \| `in_app` (extensible) |
 | delivery_delay_seconds | integer NOT NULL default 0 | retraso simulado por modalidad |
 | priority | smallint NOT NULL default 0 | Express > Premium en cola |
@@ -241,7 +266,7 @@ UNIQUE `(provider, provider_event_id)` — un evento del proveedor se procesa **
 | id | uuid PK | |
 | version | text UNIQUE NOT NULL | semver, ej. `1.2.0` |
 | system_prompt | text NOT NULL | contenido del prompt |
-| model_default | text NOT NULL | ej. `gpt-4o` / `gemini-1.5-pro` |
+| model_default | text NOT NULL | OpenAI, ej. `gpt-4o` / `gpt-4o-mini` |
 | params | jsonb | temperatura, tokens, etc. |
 | is_active | boolean default false | solo una activa a la vez |
 | created_by | uuid FK → auth.users.id | admin |
@@ -374,6 +399,7 @@ CHECK: `source in ('ai','human')`. Índice: `idx_revisions_reading_created`.
 | `prompt_versions` | ninguno | SELECT activa | ALL |
 | `audit_logs` | ninguno | ninguno | SELECT |
 | `tarot_cards`/`spreads`/`positions` | SELECT (público catálogo) | SELECT | ALL |
+| `service_plans` | SELECT solo `is_active = true` | SELECT | ALL (editar precios) |
 
 Principios: **denegar por defecto**, exponer lo mínimo, y realizar escrituras sensibles
 (pagos, transiciones, generación) desde el **servidor con service role**, nunca desde el cliente.
@@ -383,6 +409,9 @@ El tarotista ve lo necesario para su trabajo, sin PII de contacto que no requier
 
 ## 4. Datos semilla (Fase 1)
 - 78 `tarot_cards` (mayores + menores) con significados derecha/invertida.
-- `tarot_spreads` iniciales: `one-card`, `three-card`, `celtic-cross` con sus `spread_positions`.
+- `tarot_spreads` iniciales del MVP: `one-card`, `three-card` con sus `spread_positions`
+  (`celtic-cross` se suma después con solo cargar datos semilla).
+- `service_plans` iniciales: `premium` y `express` con **precios editables por el admin**
+  (se cargan valores de ejemplo; el admin los ajusta sin desplegar código).
 - `roles`: `client`, `reader`, `admin`.
-- `prompt_versions` v1 activa (encuadre ético incluido).
+- `prompt_versions` v1 activa (encuadre ético incluido), con `model_default` de OpenAI.

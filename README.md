@@ -24,9 +24,10 @@ como persona real ni afirma poderes sobrenaturales; no se garantizan prediccione
 
 - **Frontend/API**: Next.js (App Router) + React + TypeScript + Tailwind (Mobile First).
 - **Datos/Auth/Storage**: Supabase (PostgreSQL + RLS + Auth + Storage privado).
-- **Asíncrono**: BullMQ + Redis (worker dedicado) para IA, notificaciones y entrega diferida.
+- **Asíncrono**: Inngest (gestionado) para IA, notificaciones y entrega diferida, tras interfaz de cola.
 - **Pagos**: Mercado Pago (adapter), Stripe preparado por abstracción.
-- **IA**: capa de abstracción OpenAI/Gemini, con System Prompt versionado.
+- **IA**: OpenAI (`gpt-4o-mini`/`gpt-4o`) tras capa de abstracción, con System Prompt versionado.
+- **Email**: Resend. **Precios**: configurables por el admin (`service_plans`).
 
 ## Próximo paso
 
