@@ -6,6 +6,7 @@ const insertAiGeneration = vi.fn(async (_a: unknown): Promise<unknown> => ({ id:
 const completeAiGeneration = vi.fn(async (_a: unknown, _b: unknown) => undefined);
 const failAiGeneration = vi.fn(async (_a: unknown, _b: unknown) => undefined);
 const setReadingDraftStatus = vi.fn(async (_a: unknown, _b: unknown) => undefined);
+const setReadingFinalContent = vi.fn(async (_a: unknown, _b: unknown) => undefined);
 const insertReadingRevision = vi.fn(async (_a: unknown) => undefined);
 const transitionOrder = vi.fn(
   async (_a: unknown, _b: unknown, _c: unknown, _d: unknown, _e: unknown) => undefined,
@@ -18,6 +19,7 @@ vi.mock('@/server/repositories/readings', () => ({
   completeAiGeneration: (a: unknown, b: unknown) => completeAiGeneration(a, b),
   failAiGeneration: (a: unknown, b: unknown) => failAiGeneration(a, b),
   setReadingDraftStatus: (a: unknown, b: unknown) => setReadingDraftStatus(a, b),
+  setReadingFinalContent: (a: unknown, b: unknown) => setReadingFinalContent(a, b),
   insertReadingRevision: (a: unknown) => insertReadingRevision(a),
 }));
 vi.mock('@/server/services/orders/transition', () => ({
@@ -27,7 +29,11 @@ vi.mock('@/server/services/orders/transition', () => ({
 // Evita cargar el SDK de OpenAI en el default param.
 vi.mock('@/server/services/ai/openai', () => ({ openAiProvider: { name: 'openai' } }));
 
-import { generateDraftForOrder, MAX_GENERATIONS } from '@/server/services/ai/generate';
+import {
+  generateDraftForOrder,
+  regenerateForReview,
+  MAX_GENERATIONS,
+} from '@/server/services/ai/generate';
 import type { AiProvider, GenerateReadingResult } from '@/server/services/ai/provider';
 
 function makeProvider(impl?: () => Promise<GenerateReadingResult>): AiProvider {
@@ -122,5 +128,32 @@ describe('generateDraftForOrder', () => {
     expect(failAiGeneration).toHaveBeenCalledWith('gen1', 'rate limit');
     expect(transitionOrder).toHaveBeenLastCalledWith('o1', 'AI_GENERATING', 'AI_ERROR', 'system', expect.any(String));
     expect(setReadingDraftStatus).toHaveBeenLastCalledWith('r1', 'ERROR');
+  });
+});
+
+describe('regenerateForReview', () => {
+  beforeEach(() => {
+    getReadingContextForOrder.mockResolvedValue({ ...baseCtx, orderStatus: 'HUMAN_REVIEW', attemptCount: 1 });
+  });
+
+  it('regenera sin cambiar el estado de la orden y reemplaza el texto de trabajo', async () => {
+    const out = await regenerateForReview('o1', makeProvider());
+    expect(out).toBe('generated');
+    // No hay transiciones de estado en la regeneración de revisión.
+    expect(transitionOrder).not.toHaveBeenCalled();
+    expect(setReadingFinalContent).toHaveBeenCalledWith('r1', 'Una lectura cálida.');
+    const rev = insertReadingRevision.mock.calls[0]![0] as { action: string; source: string };
+    expect(rev.action).toBe('regenerate');
+    expect(rev.source).toBe('ai');
+  });
+
+  it('respeta el límite de generaciones', async () => {
+    getReadingContextForOrder.mockResolvedValue({ ...baseCtx, orderStatus: 'HUMAN_REVIEW', attemptCount: MAX_GENERATIONS });
+    expect(await regenerateForReview('o1', makeProvider())).toBe('limit_reached');
+  });
+
+  it('salta si la orden no está en revisión', async () => {
+    getReadingContextForOrder.mockResolvedValue({ ...baseCtx, orderStatus: 'QUEUED' });
+    expect(await regenerateForReview('o1', makeProvider())).toBe('skipped');
   });
 });

@@ -9,6 +9,7 @@ import {
   completeAiGeneration,
   failAiGeneration,
   setReadingDraftStatus,
+  setReadingFinalContent,
   insertReadingRevision,
 } from '@/server/repositories/readings';
 import { transitionOrder } from '@/server/services/orders/transition';
@@ -114,6 +115,76 @@ export async function generateDraftForOrder(
     await failAiGeneration(created.id, message);
     await setReadingDraftStatus(ctx.readingId, 'ERROR');
     await transitionOrder(orderId, 'AI_GENERATING', 'AI_ERROR', 'system', `Error IA: ${message}`);
+    return 'error';
+  }
+}
+
+/**
+ * Regeneración solicitada por el tarotista durante la revisión. A diferencia de
+ * la generación inicial, NO cambia el estado de la orden (permanece en
+ * HUMAN_REVIEW): produce un nuevo borrador de IA que reemplaza el texto de
+ * trabajo, registrando la revisión (source='ai', action='regenerate').
+ * Respeta el límite MAX_GENERATIONS y la idempotencia por intento.
+ */
+export async function regenerateForReview(
+  orderId: string,
+  provider: AiProvider = openAiProvider,
+): Promise<GenerateOutcome> {
+  const ctx = await getReadingContextForOrder(orderId);
+  if (!ctx) return 'skipped';
+  if (ctx.orderStatus !== 'HUMAN_REVIEW') return 'skipped';
+  if (ctx.attemptCount >= MAX_GENERATIONS) return 'limit_reached';
+
+  const prompt = await getActivePromptVersion();
+  if (!prompt) return 'no_prompt';
+
+  const attempt = ctx.attemptCount + 1;
+  const model = ctx.model || prompt.modelDefault;
+  const created = await insertAiGeneration({
+    readingId: ctx.readingId,
+    promptVersionId: prompt.id,
+    model,
+    attempt,
+    inputSnapshot: {
+      question: ctx.question,
+      context: ctx.context,
+      spreadName: ctx.spreadName,
+      cards: ctx.cards,
+      promptVersionId: prompt.id,
+      model,
+    },
+    idempotencyKey: `ai:${orderId}:${attempt}`,
+  });
+  if ('duplicate' in created) return 'duplicate';
+
+  try {
+    const result = await provider.generateReading({
+      question: ctx.question,
+      context: ctx.context ?? undefined,
+      spreadName: ctx.spreadName,
+      cards: ctx.cards,
+      systemPrompt: prompt.systemPrompt,
+      model,
+      params: prompt.params ?? undefined,
+    });
+    await completeAiGeneration(created.id, {
+      content: result.content,
+      tokensInput: result.tokensInput,
+      tokensOutput: result.tokensOutput,
+    });
+    await insertReadingRevision({
+      readingId: ctx.readingId,
+      source: 'ai',
+      content: result.content,
+      action: 'regenerate',
+      basedOnGenerationId: created.id,
+    });
+    // Reemplaza el texto de trabajo con el nuevo borrador (queda en IN_REVIEW).
+    await setReadingFinalContent(ctx.readingId, result.content);
+    return 'generated';
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Error desconocido';
+    await failAiGeneration(created.id, message);
     return 'error';
   }
 }

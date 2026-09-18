@@ -170,6 +170,43 @@ export async function setReadingDraftStatus(
   await supabase.from('tarot_readings').update({ draft_status: status }).eq('id', readingId);
 }
 
+export async function getReadingIdByOrder(orderId: string): Promise<string | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('tarot_readings')
+    .select('id')
+    .eq('order_id', orderId)
+    .single();
+  return (data?.id as string | undefined) ?? null;
+}
+
+export async function setReadingFinalContent(
+  readingId: string,
+  content: string,
+): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  await supabase
+    .from('tarot_readings')
+    .update({ final_content: content, draft_status: 'IN_REVIEW' })
+    .eq('id', readingId);
+}
+
+export async function approveReading(readingId: string, content: string): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  await supabase
+    .from('tarot_readings')
+    .update({ final_content: content, draft_status: 'APPROVED', is_ai_draft: false })
+    .eq('id', readingId);
+}
+
+export async function markReadingDelivered(readingId: string): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  await supabase
+    .from('tarot_readings')
+    .update({ delivered_at: new Date().toISOString() })
+    .eq('id', readingId);
+}
+
 export async function insertReadingRevision(params: {
   readingId: string;
   source: 'ai' | 'human';
