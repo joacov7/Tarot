@@ -1,0 +1,27 @@
+# Dependencias
+node_modules/
+
+# Entorno / secretos (NUNCA versionar)
+.env
+.env.local
+.env.*.local
+
+# Builds
+.next/
+dist/
+build/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# SO / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Cobertura / tests
+coverage/
+playwright-report/
+test-results/
