@@ -24,6 +24,9 @@ const config: Config = {
         display: ['var(--font-display)', 'serif'],
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
       },
+      gridTemplateColumns: {
+        13: 'repeat(13, minmax(0, 1fr))',
+      },
       keyframes: {
         'card-flip': {
           '0%': { transform: 'rotateY(0deg)' },
