@@ -4,13 +4,11 @@ import type { VerifiedWebhook } from '@/server/services/payments/provider';
 import { verifyAmountCurrency } from '@/server/services/payments/webhook-verify';
 import {
   getOrderById,
-  updateOrderStatus,
   recordPaymentEvent,
   upsertPayment,
 } from '@/server/repositories/orders';
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { assertTransition, InvalidTransitionError } from '@/server/domain/order-state-machine';
-import type { OrderStatus, Actor } from '@/types/domain';
+import { InvalidTransitionError } from '@/server/domain/order-state-machine';
+import { transitionOrder } from '@/server/services/orders/transition';
 import { getQueue } from '@/server/queue';
 
 export type WebhookOutcome =
@@ -22,29 +20,6 @@ export type WebhookOutcome =
   | 'payment_failed'
   | 'refunded'
   | 'noop';
-
-/** Transición auditada de una orden. Idempotente: si ya está en destino, no falla. */
-async function transitionOrder(
-  orderId: string,
-  from: OrderStatus,
-  to: OrderStatus,
-  actor: Actor,
-  reason: string,
-): Promise<void> {
-  assertTransition(from, to, actor); // lanza si no es válida
-  await updateOrderStatus(orderId, to, to === 'PAID' ? { paidAt: new Date().toISOString() } : undefined);
-  const supabase = createSupabaseAdminClient();
-  await supabase.from('audit_logs').insert({
-    actor_id: null,
-    actor_role: actor,
-    entity_type: 'order',
-    entity_id: orderId,
-    action: 'status_change',
-    from_status: from,
-    to_status: to,
-    metadata: { reason },
-  });
-}
 
 /**
  * Procesa un webhook de pago YA VERIFICADO por el adapter. Es la única puerta
