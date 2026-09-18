@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-mystic-bg text-mystic-text antialiased;
+  background-image:
+    radial-gradient(ellipse at top, rgba(139, 111, 212, 0.12), transparent 55%),
+    radial-gradient(ellipse at bottom, rgba(201, 164, 92, 0.08), transparent 55%);
+  background-attachment: fixed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

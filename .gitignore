@@ -25,3 +25,7 @@ npm-debug.log*
 coverage/
 playwright-report/
 test-results/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
